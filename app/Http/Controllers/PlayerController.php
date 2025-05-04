@@ -80,4 +80,19 @@ class PlayerController extends Controller
         
         return response()->json($player);
     }
+    
+    public function updatePlayerState(Request $request)
+    {
+        $request->validate([
+            'level' => 'required|integer|min:1',
+            'actual_hp' => 'required|integer|min:0',
+        ]);
+        
+        $player = Auth::user()->player;
+        $player->level = $request->level;
+        $player->actual_hp = $request->actual_hp;
+        $player->save();
+        
+        return response()->json($player);
+    }
 }

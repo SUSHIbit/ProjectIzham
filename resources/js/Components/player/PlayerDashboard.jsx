@@ -24,7 +24,7 @@ const PlayerDashboard = () => {
             setCharacterName(response.data.character_name);
             setLoading(false);
 
-            // Check if player can upgrade stats
+            // Check if player can upgrade stats (every 5 levels)
             if (response.data.level % 5 === 0 && response.data.level > 0) {
                 setShowStatUpgrade(true);
             }
@@ -213,7 +213,9 @@ const PlayerDashboard = () => {
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <span className="text-gray-400">HP:</span>
-                                <span className="ml-2">{player?.hp}</span>
+                                <span className="ml-2">
+                                    {player?.actual_hp}/{player?.hp}
+                                </span>
                             </div>
                             <div>
                                 <span className="text-gray-400">Defense:</span>

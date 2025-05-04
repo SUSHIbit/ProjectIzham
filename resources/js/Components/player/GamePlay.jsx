@@ -22,7 +22,7 @@ const GamePlay = () => {
     // UI state
     const [selectedAnswer, setSelectedAnswer] = useState(null);
     const [answerResult, setAnswerResult] = useState(null);
-    const [gameState, setGameState] = useState("question"); // question, player-turn, enemy-turn, game-over, victory
+    const [gameState, setGameState] = useState("question"); // question, player-turn, enemy-turn, game-over, victory-transition
     const [message, setMessage] = useState("");
     const [cooldowns, setCooldowns] = useState({
         powerStrike: 0,
@@ -61,11 +61,13 @@ const GamePlay = () => {
             const firstEnemy = enemiesResponse.data[0];
             setCurrentEnemy(firstEnemy);
             setEnemyHP(firstEnemy.hp);
+            setCurrentEnemyIndex(0);
 
             // Set current question if available
             if (firstEnemy.questions && firstEnemy.questions.length > 0) {
                 setCurrentQuestion(firstEnemy.questions[0]);
                 setCurrentQuestionIndex(0);
+                setGameState("question");
             } else {
                 setGameState("player-turn");
             }
@@ -163,6 +165,9 @@ const GamePlay = () => {
         setPlayerHP(newPlayerHP);
         setMessage(skillMessage);
 
+        // Update player state in database
+        updatePlayerState(playerLevel, newPlayerHP);
+
         // Check if enemy is defeated
         if (newEnemyHP <= 0) {
             handleEnemyDefeated();
@@ -191,6 +196,9 @@ const GamePlay = () => {
             `${currentEnemy.name} attacks you for ${actualDamage} damage!`
         );
 
+        // Update player state in database
+        updatePlayerState(playerLevel, newPlayerHP);
+
         // Check if player is defeated
         if (newPlayerHP <= 0) {
             setTimeout(() => {
@@ -215,47 +223,46 @@ const GamePlay = () => {
         const newLevel = playerLevel + 1;
         setPlayerLevel(newLevel);
 
+        // Update player state in database
+        updatePlayerState(newLevel, playerHP);
+
+        // Show victory transition screen
+        setMessage(
+            `You defeated ${currentEnemy.name}! Level up to ${newLevel}!`
+        );
+        setGameState("victory-transition");
+    };
+
+    const handleContinue = () => {
         // Check if there are more enemies in current cycle
         if (currentEnemyIndex < enemies.length - 1) {
-            setMessage(
-                `You defeated ${currentEnemy.name}! Level up to ${newLevel}!`
-            );
-
             // Move to next enemy after delay
-            setTimeout(() => {
-                const nextEnemyIndex = currentEnemyIndex + 1;
-                const nextEnemy = enemies[nextEnemyIndex];
+            const nextEnemyIndex = currentEnemyIndex + 1;
+            const nextEnemy = enemies[nextEnemyIndex];
 
-                setCurrentEnemyIndex(nextEnemyIndex);
-                setCurrentEnemy(nextEnemy);
-                setEnemyHP(nextEnemy.hp);
-                setCurrentQuestionIndex(0);
-                setCurrentQuestion(nextEnemy.questions?.[0] || null);
-                setSelectedAnswer(null);
-                setAnswerResult(null);
-                setGameState(
-                    nextEnemy.questions?.length > 0 ? "question" : "player-turn"
-                );
-                setMessage(`New enemy: ${nextEnemy.name}`);
-
-                // Reset cooldowns for new enemy
-                setCooldowns({
-                    powerStrike: 0,
-                    shieldBash: 0,
-                    heal: 0,
-                    fireball: 0,
-                });
-            }, 2000);
-        } else {
-            // Defeated all enemies in current cycle - reshuffle and start again
-            setMessage(
-                `You defeated ${currentEnemy.name}! Level up to ${newLevel}! Starting new cycle...`
+            setCurrentEnemyIndex(nextEnemyIndex);
+            setCurrentEnemy(nextEnemy);
+            setEnemyHP(nextEnemy.hp);
+            setCurrentQuestionIndex(0);
+            setCurrentQuestion(nextEnemy.questions?.[0] || null);
+            setSelectedAnswer(null);
+            setAnswerResult(null);
+            setGameState(
+                nextEnemy.questions?.length > 0 ? "question" : "player-turn"
             );
+            setMessage(`New enemy: ${nextEnemy.name}`);
 
-            setTimeout(() => {
-                // Fetch enemies again which will be reshuffled
-                initializeGame();
-            }, 2000);
+            // Reset cooldowns for new enemy
+            setCooldowns({
+                powerStrike: 0,
+                shieldBash: 0,
+                heal: 0,
+                fireball: 0,
+            });
+        } else {
+            // All enemies defeated in current cycle - reshuffle and start again
+            setMessage("All enemies defeated! Starting new cycle...");
+            initializeGame();
         }
     };
 
@@ -263,11 +270,11 @@ const GamePlay = () => {
         // Check if there are questions for the current enemy
         if (currentEnemy.questions && currentEnemy.questions.length > 0) {
             // If at the end of questions, start from beginning (infinite loop)
-            const nextQuestionIndex =
-                currentQuestionIndex < currentEnemy.questions.length - 1
-                    ? currentQuestionIndex + 1
+            const nextQuestionIndex = 
+                currentQuestionIndex < currentEnemy.questions.length - 1 
+                    ? currentQuestionIndex + 1 
                     : 0;
-
+            
             setCurrentQuestionIndex(nextQuestionIndex);
             setCurrentQuestion(currentEnemy.questions[nextQuestionIndex]);
             setSelectedAnswer(null);
@@ -295,6 +302,17 @@ const GamePlay = () => {
             });
         } catch (error) {
             console.error("Error updating leaderboard:", error);
+        }
+    };
+
+    const updatePlayerState = async (level, hp) => {
+        try {
+            await axios.post("/api/player/update-state", {
+                level: level,
+                actual_hp: hp,
+            });
+        } catch (error) {
+            console.error("Error updating player state:", error);
         }
     };
 
@@ -341,13 +359,41 @@ const GamePlay = () => {
 
                 {gameState === "game-over" ? (
                     <div className="text-center">
-                        <div className="text-2xl font-bold mb-6">Game Over</div>
+                        <div className="text-2xl font-bold mb-6">
+                            Game Over
+                        </div>
                         <button
                             onClick={handleExitGame}
                             className="px-6 py-3 bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                         >
                             Return to Dashboard
                         </button>
+                    </div>
+                ) : gameState === "victory-transition" ? (
+                    <div className="bg-gray-800 p-8 rounded-md mb-6 text-center">
+                        <h2 className="text-2xl font-bold mb-4">
+                            Victory!
+                        </h2>
+                        <p className="text-xl mb-6">
+                            You defeated {currentEnemy?.name}! Level up to {playerLevel}!
+                        </p>
+                        <p className="text-lg mb-8">
+                            Ready to continue?
+                        </p>
+                        <div className="flex justify-center space-x-4">
+                            <button
+                                onClick={handleContinue}
+                                className="px-6 py-3 bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                            >
+                                Continue
+                            </button>
+                            <button
+                                onClick={handleExitGame}
+                                className="px-6 py-3 bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                            >
+                                Exit Game
+                            </button>
+                        </div>
                     </div>
                 ) : (
                     <>

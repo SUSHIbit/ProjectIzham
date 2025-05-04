@@ -33,6 +33,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/player/profile', [PlayerController::class, 'getProfile']);
         Route::put('/player/profile', [PlayerController::class, 'updateProfile']);
         Route::post('/player/upgrade-stats', [PlayerController::class, 'upgradeStats']);
+        Route::post('/player/update-state', [PlayerController::class, 'updatePlayerState']);
         Route::get('/game/enemies', [GameController::class, 'getAllEnemies']);
         Route::post('/game/leaderboard', [GameController::class, 'updateLeaderboard']);
         Route::get('/leaderboard', [LeaderboardController::class, 'index']);
