@@ -30,6 +30,14 @@ class AuthController extends Controller
         $player = Player::create([
             'user_id' => $user->id,
             'character_name' => 'Adventurer',
+            'level' => 1,
+            'hp' => 100,
+            'actual_hp' => 100,
+            'defense' => 5,
+            'min_attack' => 10,
+            'max_attack' => 15,
+            'heal_value' => 20,
+            'upgrades_used' => 0,
         ]);
         
         // Create leaderboard entry

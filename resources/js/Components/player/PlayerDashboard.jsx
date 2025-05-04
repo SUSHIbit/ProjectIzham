@@ -11,6 +11,7 @@ const PlayerDashboard = () => {
     const [error, setError] = useState("");
     const [isEditing, setIsEditing] = useState(false);
     const [showStatUpgrade, setShowStatUpgrade] = useState(false);
+    const [availableUpgrades, setAvailableUpgrades] = useState(0);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -24,14 +25,31 @@ const PlayerDashboard = () => {
             setCharacterName(response.data.character_name);
             setLoading(false);
 
-            // Check if player can upgrade stats (every 5 levels)
-            if (response.data.level % 5 === 0 && response.data.level > 0) {
-                setShowStatUpgrade(true);
-            }
+            // Check if player has pending stat upgrades
+            checkPendingUpgrades(response.data);
         } catch (error) {
             setError("Failed to load player profile");
             setLoading(false);
         }
+    };
+
+    const checkPendingUpgrades = (playerData) => {
+        // Calculate total available upgrades based on level (every 5 levels)
+        const totalUpgrades = Math.floor(playerData.level / 5);
+
+        // Get already used upgrades from player data
+        const usedUpgrades = playerData.upgrades_used || 0;
+
+        // Calculate remaining upgrades
+        const pendingUpgrades = totalUpgrades - usedUpgrades;
+
+        if (pendingUpgrades > 0) {
+            setAvailableUpgrades(pendingUpgrades);
+            setShowStatUpgrade(true);
+        }
+
+        // Clear localStorage if it exists
+        localStorage.removeItem("pendingStatUpgrade");
     };
 
     const handleUpdateProfile = async (e) => {
@@ -55,7 +73,15 @@ const PlayerDashboard = () => {
                 stat,
             });
             setPlayer(response.data);
-            setShowStatUpgrade(false);
+
+            // Decrease available upgrades
+            const newUpgrades = availableUpgrades - 1;
+            setAvailableUpgrades(newUpgrades);
+
+            if (newUpgrades === 0) {
+                setShowStatUpgrade(false);
+            }
+
             setError("");
         } catch (error) {
             setError("Failed to upgrade stats");
@@ -94,7 +120,7 @@ const PlayerDashboard = () => {
                     </div>
                 )}
 
-                {/* Stat Upgrade Modal */}
+                {/* Multiple Stat Upgrade Modal */}
                 {showStatUpgrade && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                         <div className="bg-gray-800 p-6 rounded-lg max-w-md w-full m-4">
@@ -102,7 +128,12 @@ const PlayerDashboard = () => {
                                 Level {player.level} Milestone!
                             </h2>
                             <p className="mb-6 text-gray-300">
-                                Choose one stat to upgrade:
+                                You have {availableUpgrades} stat upgrade
+                                {availableUpgrades > 1 ? "s" : ""} available!
+                            </p>
+                            <p className="mb-6 text-gray-300">
+                                Choose a stat to upgrade (you can select
+                                multiple):
                             </p>
                             <div className="space-y-3">
                                 <button
@@ -130,6 +161,9 @@ const PlayerDashboard = () => {
                                     +20 Max HP
                                 </button>
                             </div>
+                            <p className="mt-4 text-gray-400 text-sm">
+                                Upgrades remaining: {availableUpgrades}
+                            </p>
                         </div>
                     </div>
                 )}
@@ -200,6 +234,14 @@ const PlayerDashboard = () => {
                                     </span>
                                     <span className="ml-2">
                                         {player?.level}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span className="text-gray-400">
+                                        Upgrades Used:
+                                    </span>
+                                    <span className="ml-2">
+                                        {player?.upgrades_used || 0}
                                     </span>
                                 </div>
                             </div>

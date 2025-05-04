@@ -11,24 +11,16 @@ class GameController extends Controller
 {
     public function getAllEnemies()
     {
-        $player = Auth::user()->player;
+        // Just return all enemies, the battle level logic is now handled in frontend
+        $allEnemies = Enemy::with('questions')->get();
         
-        // Get enemies for this level range and store the full enemy collection
-        $allEnemies = Enemy::with('questions')
-            ->where('min_level', '<=', $player->level)
-            ->where('max_level', '>=', $player->level)
-            ->get();
-        
-        // If no enemies available at this level, return empty
+        // If no enemies available, return empty array
         if ($allEnemies->isEmpty()) {
             return response()->json([]);
         }
         
-        // Shuffle the enemy collection
-        $shuffledEnemies = $allEnemies->shuffle();
-        
         // Process each enemy to prepare shuffled questions
-        $preparedEnemies = $shuffledEnemies->map(function ($enemy) {
+        $preparedEnemies = $allEnemies->map(function ($enemy) {
             // Get the questions for this enemy
             $questions = $enemy->questions;
             
@@ -68,9 +60,8 @@ class GameController extends Controller
         ]);
         
         $player = Auth::user()->player;
-        $player->level = $request->level;
-        $player->save();
         
+        // Update or create leaderboard entry with highest level
         $leaderboard = $player->leaderboard;
         
         if (!$leaderboard) {

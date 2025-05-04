@@ -17,7 +17,12 @@ const GamePlay = () => {
     const [player, setPlayer] = useState(null);
     const [playerHP, setPlayerHP] = useState(0);
     const [enemyHP, setEnemyHP] = useState(0);
-    const [playerLevel, setPlayerLevel] = useState(1);
+
+    // Battle Level State (in-game progress, always starts at 1)
+    const [battleLevel, setBattleLevel] = useState(1);
+
+    // Character level (persistent level from DB)
+    const [characterLevel, setCharacterLevel] = useState(1);
 
     // UI state
     const [selectedAnswer, setSelectedAnswer] = useState(null);
@@ -41,15 +46,16 @@ const GamePlay = () => {
             const playerResponse = await axios.get("/api/player/profile");
             setPlayer(playerResponse.data);
             setPlayerHP(playerResponse.data.actual_hp);
-            setPlayerLevel(playerResponse.data.level);
+            setCharacterLevel(playerResponse.data.level);
 
-            // Load enemies with questions
-            const enemiesResponse = await axios.get("/api/game/enemies");
+            // Always start battle at level 1
+            setBattleLevel(1);
+
+            // Load all enemies
+            const enemiesResponse = await axios.get("/api/admin/enemies");
 
             if (enemiesResponse.data.length === 0) {
-                setMessage(
-                    "No enemies available for your level. Please try again later."
-                );
+                setMessage("No enemies available. Please try again later.");
                 setGameState("game-over");
                 setLoading(false);
                 return;
@@ -57,20 +63,8 @@ const GamePlay = () => {
 
             setEnemies(enemiesResponse.data);
 
-            // Set current enemy
-            const firstEnemy = enemiesResponse.data[0];
-            setCurrentEnemy(firstEnemy);
-            setEnemyHP(firstEnemy.hp);
-            setCurrentEnemyIndex(0);
-
-            // Set current question if available
-            if (firstEnemy.questions && firstEnemy.questions.length > 0) {
-                setCurrentQuestion(firstEnemy.questions[0]);
-                setCurrentQuestionIndex(0);
-                setGameState("question");
-            } else {
-                setGameState("player-turn");
-            }
+            // Set current enemy based on battle level
+            setupEnemyForLevel(1, enemiesResponse.data);
 
             setLoading(false);
         } catch (error) {
@@ -78,6 +72,43 @@ const GamePlay = () => {
             setMessage("Failed to load game data. Please try again.");
             setGameState("game-over");
             setLoading(false);
+        }
+    };
+
+    const setupEnemyForLevel = (level, enemiesList) => {
+        // Filter enemies appropriate for current battle level
+        const availableEnemies = enemiesList.filter(
+            (enemy) => enemy.min_level <= level && enemy.max_level >= level
+        );
+
+        if (availableEnemies.length === 0) {
+            // If no enemies for current level, show victory
+            setMessage(`Victory! No more enemies at battle level ${level}!`);
+            setGameState("game-over");
+            return;
+        }
+
+        // Select enemy based on in_game_level or randomly from available
+        const enemyForLevel = availableEnemies.find(
+            (enemy) => enemy.in_game_level === level
+        );
+        const selectedEnemy =
+            enemyForLevel ||
+            availableEnemies[
+                Math.floor(Math.random() * availableEnemies.length)
+            ];
+
+        setCurrentEnemy(selectedEnemy);
+        setEnemyHP(selectedEnemy.hp);
+        setCurrentEnemyIndex(enemiesList.indexOf(selectedEnemy));
+
+        // Set current question if available
+        if (selectedEnemy.questions && selectedEnemy.questions.length > 0) {
+            setCurrentQuestion(selectedEnemy.questions[0]);
+            setCurrentQuestionIndex(0);
+            setGameState("question");
+        } else {
+            setGameState("player-turn");
         }
     };
 
@@ -166,7 +197,7 @@ const GamePlay = () => {
         setMessage(skillMessage);
 
         // Update player state in database
-        updatePlayerState(playerLevel, newPlayerHP);
+        updatePlayerState(newPlayerHP);
 
         // Check if enemy is defeated
         if (newEnemyHP <= 0) {
@@ -197,7 +228,7 @@ const GamePlay = () => {
         );
 
         // Update player state in database
-        updatePlayerState(playerLevel, newPlayerHP);
+        updatePlayerState(newPlayerHP);
 
         // Check if player is defeated
         if (newPlayerHP <= 0) {
@@ -219,62 +250,42 @@ const GamePlay = () => {
     };
 
     const handleEnemyDefeated = () => {
-        // Increase player level
-        const newLevel = playerLevel + 1;
-        setPlayerLevel(newLevel);
+        // Increase battle level
+        const newBattleLevel = battleLevel + 1;
+        setBattleLevel(newBattleLevel);
 
-        // Update player state in database
-        updatePlayerState(newLevel, playerHP);
+        // Update character level in database
+        updateCharacterLevel();
 
         // Show victory transition screen
         setMessage(
-            `You defeated ${currentEnemy.name}! Level up to ${newLevel}!`
+            `You defeated ${currentEnemy.name}! Battle level ${newBattleLevel}!`
         );
         setGameState("victory-transition");
     };
 
     const handleContinue = () => {
-        // Check if there are more enemies in current cycle
-        if (currentEnemyIndex < enemies.length - 1) {
-            // Move to next enemy after delay
-            const nextEnemyIndex = currentEnemyIndex + 1;
-            const nextEnemy = enemies[nextEnemyIndex];
+        // Load enemies for next battle level
+        setupEnemyForLevel(battleLevel, enemies);
 
-            setCurrentEnemyIndex(nextEnemyIndex);
-            setCurrentEnemy(nextEnemy);
-            setEnemyHP(nextEnemy.hp);
-            setCurrentQuestionIndex(0);
-            setCurrentQuestion(nextEnemy.questions?.[0] || null);
-            setSelectedAnswer(null);
-            setAnswerResult(null);
-            setGameState(
-                nextEnemy.questions?.length > 0 ? "question" : "player-turn"
-            );
-            setMessage(`New enemy: ${nextEnemy.name}`);
-
-            // Reset cooldowns for new enemy
-            setCooldowns({
-                powerStrike: 0,
-                shieldBash: 0,
-                heal: 0,
-                fireball: 0,
-            });
-        } else {
-            // All enemies defeated in current cycle - reshuffle and start again
-            setMessage("All enemies defeated! Starting new cycle...");
-            initializeGame();
-        }
+        // Reset cooldowns for new enemy
+        setCooldowns({
+            powerStrike: 0,
+            shieldBash: 0,
+            heal: 0,
+            fireball: 0,
+        });
     };
 
     const tryQuestion = () => {
         // Check if there are questions for the current enemy
         if (currentEnemy.questions && currentEnemy.questions.length > 0) {
             // If at the end of questions, start from beginning (infinite loop)
-            const nextQuestionIndex = 
-                currentQuestionIndex < currentEnemy.questions.length - 1 
-                    ? currentQuestionIndex + 1 
+            const nextQuestionIndex =
+                currentQuestionIndex < currentEnemy.questions.length - 1
+                    ? currentQuestionIndex + 1
                     : 0;
-            
+
             setCurrentQuestionIndex(nextQuestionIndex);
             setCurrentQuestion(currentEnemy.questions[nextQuestionIndex]);
             setSelectedAnswer(null);
@@ -297,22 +308,44 @@ const GamePlay = () => {
 
     const updateLeaderboard = async () => {
         try {
+            // Use character level for leaderboard, not battle level
             await axios.post("/api/game/leaderboard", {
-                level: playerLevel,
+                level: characterLevel,
             });
         } catch (error) {
             console.error("Error updating leaderboard:", error);
         }
     };
 
-    const updatePlayerState = async (level, hp) => {
+    const updatePlayerState = async (hp) => {
         try {
             await axios.post("/api/player/update-state", {
-                level: level,
+                level: characterLevel,
                 actual_hp: hp,
             });
         } catch (error) {
             console.error("Error updating player state:", error);
+        }
+    };
+
+    const updateCharacterLevel = async () => {
+        try {
+            // Increase character level (persistent level)
+            const newCharacterLevel = characterLevel + 1;
+            setCharacterLevel(newCharacterLevel);
+
+            await axios.post("/api/player/update-state", {
+                level: newCharacterLevel,
+                actual_hp: playerHP,
+            });
+
+            // Check for stat upgrades (every 5 levels)
+            if (newCharacterLevel % 5 === 0) {
+                // This will trigger stat upgrade option in dashboard later
+                localStorage.setItem("pendingStatUpgrade", "true");
+            }
+        } catch (error) {
+            console.error("Error updating character level:", error);
         }
     };
 
@@ -339,8 +372,11 @@ const GamePlay = () => {
                 <header className="flex justify-between items-center py-4 border-b border-gray-700 mb-6">
                     <h1 className="text-3xl font-bold">RPG Battle</h1>
                     <div>
+                        <span className="text-gray-400 mr-4">
+                            Character Level: {characterLevel}
+                        </span>
                         <span className="text-gray-400 mr-2">
-                            Level: {playerLevel}
+                            Battle Level: {battleLevel}
                         </span>
                         <button
                             onClick={handleExitGame}
@@ -359,9 +395,7 @@ const GamePlay = () => {
 
                 {gameState === "game-over" ? (
                     <div className="text-center">
-                        <div className="text-2xl font-bold mb-6">
-                            Game Over
-                        </div>
+                        <div className="text-2xl font-bold mb-6">Game Over</div>
                         <button
                             onClick={handleExitGame}
                             className="px-6 py-3 bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
@@ -371,14 +405,13 @@ const GamePlay = () => {
                     </div>
                 ) : gameState === "victory-transition" ? (
                     <div className="bg-gray-800 p-8 rounded-md mb-6 text-center">
-                        <h2 className="text-2xl font-bold mb-4">
-                            Victory!
-                        </h2>
+                        <h2 className="text-2xl font-bold mb-4">Victory!</h2>
                         <p className="text-xl mb-6">
-                            You defeated {currentEnemy?.name}! Level up to {playerLevel}!
+                            You defeated {currentEnemy?.name}! Character Level:{" "}
+                            {characterLevel}!
                         </p>
                         <p className="text-lg mb-8">
-                            Ready to continue?
+                            Proceeding to battle level {battleLevel}...
                         </p>
                         <div className="flex justify-center space-x-4">
                             <button
@@ -412,7 +445,7 @@ const GamePlay = () => {
                                             {player?.character_name}
                                         </div>
                                         <div className="text-sm text-gray-400">
-                                            Level {playerLevel}
+                                            Character Level {characterLevel}
                                         </div>
                                     </div>
                                 </div>
@@ -446,7 +479,7 @@ const GamePlay = () => {
                             {/* Enemy Stats */}
                             <div className="bg-gray-800 p-4 rounded-md">
                                 <h2 className="text-xl font-semibold mb-2">
-                                    Enemy
+                                    Enemy (Battle Level: {battleLevel})
                                 </h2>
                                 <div className="flex items-center mb-2">
                                     <div className="w-20 h-20 bg-gray-700 rounded-md flex items-center justify-center overflow-hidden mr-4">

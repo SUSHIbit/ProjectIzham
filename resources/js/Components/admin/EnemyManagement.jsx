@@ -20,6 +20,7 @@ const EnemyManagement = () => {
         image: null,
         min_level: 1,
         max_level: 10,
+        in_game_level: 1,
     });
 
     // File input ref
@@ -72,6 +73,7 @@ const EnemyManagement = () => {
         data.append("defense", formData.defense);
         data.append("min_level", formData.min_level);
         data.append("max_level", formData.max_level);
+        data.append("in_game_level", formData.in_game_level);
 
         if (formData.image) {
             data.append("image", formData.image);
@@ -115,6 +117,7 @@ const EnemyManagement = () => {
         data.append("defense", formData.defense);
         data.append("min_level", formData.min_level);
         data.append("max_level", formData.max_level);
+        data.append("in_game_level", formData.in_game_level);
 
         if (formData.image) {
             data.append("image", formData.image);
@@ -174,6 +177,7 @@ const EnemyManagement = () => {
             image: null,
             min_level: enemy.min_level,
             max_level: enemy.max_level,
+            in_game_level: enemy.in_game_level || 1,
         });
 
         setSelectedEnemy(enemy);
@@ -191,6 +195,7 @@ const EnemyManagement = () => {
             image: null,
             min_level: 1,
             max_level: 10,
+            in_game_level: 1,
         });
 
         if (fileInputRef.current) {
@@ -387,6 +392,25 @@ const EnemyManagement = () => {
                                     />
                                 </div>
 
+                                <div>
+                                    <label
+                                        htmlFor="in_game_level"
+                                        className="block text-sm font-medium text-gray-300 mb-1"
+                                    >
+                                        In-Game Level
+                                    </label>
+                                    <input
+                                        id="in_game_level"
+                                        name="in_game_level"
+                                        type="number"
+                                        min="1"
+                                        value={formData.in_game_level}
+                                        onChange={handleInputChange}
+                                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500"
+                                        required
+                                    />
+                                </div>
+
                                 <div className="md:col-span-2">
                                     <label
                                         htmlFor="image"
@@ -482,6 +506,12 @@ const EnemyManagement = () => {
                                 </th>
                                 <th
                                     scope="col"
+                                    className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
+                                >
+                                    In-Game Level
+                                </th>
+                                <th
+                                    scope="col"
                                     className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider"
                                 >
                                     Actions
@@ -492,7 +522,7 @@ const EnemyManagement = () => {
                             {enemies.length === 0 ? (
                                 <tr>
                                     <td
-                                        colSpan="7"
+                                        colSpan="8"
                                         className="px-6 py-4 text-center text-sm text-gray-400"
                                     >
                                         No enemies yet. Add your first enemy!
@@ -526,6 +556,9 @@ const EnemyManagement = () => {
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                                             {enemy.min_level} -{" "}
                                             {enemy.max_level}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                            {enemy.in_game_level || 1}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <div className="flex justify-end space-x-2">

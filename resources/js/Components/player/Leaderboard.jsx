@@ -9,6 +9,13 @@ const Leaderboard = () => {
 
     useEffect(() => {
         fetchLeaderboard();
+
+        // Refresh leaderboard when component mounts
+        const interval = setInterval(() => {
+            fetchLeaderboard();
+        }, 30000); // Refresh every 30 seconds
+
+        return () => clearInterval(interval);
     }, []);
 
     const fetchLeaderboard = async () => {
@@ -75,7 +82,7 @@ const Leaderboard = () => {
                                     scope="col"
                                     className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
                                 >
-                                    Level
+                                    Highest Level
                                 </th>
                             </tr>
                         </thead>

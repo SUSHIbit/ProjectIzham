@@ -19,6 +19,7 @@ class Player extends Model
         'min_attack',
         'max_attack',
         'heal_value',
+        'upgrades_used',
     ];
 
     public function user()

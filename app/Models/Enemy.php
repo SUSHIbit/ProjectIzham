@@ -19,6 +19,7 @@ class Enemy extends Model
         'min_level',
         'max_level',
         'question_shuffle_order',
+        'in_game_level',
     ];
 
     public function questions()

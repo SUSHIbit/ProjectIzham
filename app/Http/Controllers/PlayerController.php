@@ -25,6 +25,7 @@ class PlayerController extends Controller
                 'min_attack' => 10,
                 'max_attack' => 15,
                 'heal_value' => 20,
+                'upgrades_used' => 0,
             ]);
             
             // Create leaderboard entry
@@ -59,6 +60,14 @@ class PlayerController extends Controller
         
         $player = Auth::user()->player;
         
+        // Check if player has upgrades available
+        $totalUpgrades = floor($player->level / 5);
+        $usedUpgrades = $player->upgrades_used;
+        
+        if ($usedUpgrades >= $totalUpgrades) {
+            return response()->json(['error' => 'No upgrades available'], 400);
+        }
+        
         switch ($request->stat) {
             case 'attack':
                 $player->min_attack += 10;
@@ -76,6 +85,8 @@ class PlayerController extends Controller
                 break;
         }
         
+        // Increment upgrades used
+        $player->upgrades_used += 1;
         $player->save();
         
         return response()->json($player);
@@ -92,6 +103,14 @@ class PlayerController extends Controller
         $player->level = $request->level;
         $player->actual_hp = $request->actual_hp;
         $player->save();
+        
+        // Update leaderboard if this is a new highest level
+        $leaderboard = $player->leaderboard;
+        if ($leaderboard && $request->level > $leaderboard->highest_level) {
+            $leaderboard->update([
+                'highest_level' => $request->level,
+            ]);
+        }
         
         return response()->json($player);
     }
