@@ -65,6 +65,7 @@ const GamePlay = () => {
             // Set current question if available
             if (firstEnemy.questions && firstEnemy.questions.length > 0) {
                 setCurrentQuestion(firstEnemy.questions[0]);
+                setCurrentQuestionIndex(0);
             } else {
                 setGameState("player-turn");
             }
@@ -214,7 +215,7 @@ const GamePlay = () => {
         const newLevel = playerLevel + 1;
         setPlayerLevel(newLevel);
 
-        // Check if there are more enemies
+        // Check if there are more enemies in current cycle
         if (currentEnemyIndex < enemies.length - 1) {
             setMessage(
                 `You defeated ${currentEnemy.name}! Level up to ${newLevel}!`
@@ -246,34 +247,32 @@ const GamePlay = () => {
                 });
             }, 2000);
         } else {
-            // Victory - all enemies defeated
-            setGameState("victory");
+            // Defeated all enemies in current cycle - reshuffle and start again
             setMessage(
-                `Congratulations! You've defeated all enemies and reached level ${newLevel}!`
+                `You defeated ${currentEnemy.name}! Level up to ${newLevel}! Starting new cycle...`
             );
-            // Update leaderboard with final level
-            updateLeaderboard();
+
+            setTimeout(() => {
+                // Fetch enemies again which will be reshuffled
+                initializeGame();
+            }, 2000);
         }
     };
 
     const tryQuestion = () => {
-        // Check if there are more questions for the current enemy
+        // Check if there are questions for the current enemy
         if (currentEnemy.questions && currentEnemy.questions.length > 0) {
-            if (currentQuestionIndex < currentEnemy.questions.length - 1) {
-                const nextQuestionIndex = currentQuestionIndex + 1;
-                setCurrentQuestionIndex(nextQuestionIndex);
-                setCurrentQuestion(currentEnemy.questions[nextQuestionIndex]);
-                setSelectedAnswer(null);
-                setAnswerResult(null);
-                setGameState("question");
-            } else {
-                // No more questions, go back to player-turn (continuous battle)
-                setCurrentQuestionIndex(0);
-                setSelectedAnswer(null);
-                setAnswerResult(null);
-                setGameState("player-turn");
-                setMessage("No more questions! Continuing the battle...");
-            }
+            // If at the end of questions, start from beginning (infinite loop)
+            const nextQuestionIndex =
+                currentQuestionIndex < currentEnemy.questions.length - 1
+                    ? currentQuestionIndex + 1
+                    : 0;
+
+            setCurrentQuestionIndex(nextQuestionIndex);
+            setCurrentQuestion(currentEnemy.questions[nextQuestionIndex]);
+            setSelectedAnswer(null);
+            setAnswerResult(null);
+            setGameState("question");
         } else {
             // No questions available, continue battle
             setGameState("player-turn");
@@ -340,11 +339,9 @@ const GamePlay = () => {
                     </div>
                 )}
 
-                {gameState === "game-over" || gameState === "victory" ? (
+                {gameState === "game-over" ? (
                     <div className="text-center">
-                        <div className="text-2xl font-bold mb-6">
-                            {gameState === "victory" ? "Victory!" : "Game Over"}
-                        </div>
+                        <div className="text-2xl font-bold mb-6">Game Over</div>
                         <button
                             onClick={handleExitGame}
                             className="px-6 py-3 bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"

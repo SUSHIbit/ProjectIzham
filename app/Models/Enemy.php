@@ -18,6 +18,7 @@ class Enemy extends Model
         'image_path',
         'min_level',
         'max_level',
+        'question_shuffle_order',
     ];
 
     public function questions()
