@@ -14,6 +14,7 @@ class Player extends Model
         'character_name',
         'level',
         'hp',
+        'actual_hp',
         'defense',
         'min_attack',
         'max_attack',

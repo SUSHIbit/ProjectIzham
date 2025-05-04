@@ -23,6 +23,8 @@ class EnemyController extends Controller
             'max_attack' => 'required|integer|gte:min_attack',
             'defense' => 'required|integer|min:0',
             'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'min_level' => 'required|integer|min:1',
+            'max_level' => 'required|integer|gte:min_level',
         ]);
         
         $imagePath = $request->file('image')->store('public/enemies');
@@ -34,6 +36,8 @@ class EnemyController extends Controller
             'max_attack' => $request->max_attack,
             'defense' => $request->defense,
             'image_path' => str_replace('public/', '', $imagePath),
+            'min_level' => $request->min_level,
+            'max_level' => $request->max_level,
         ]);
         
         return response()->json($enemy, 201);
@@ -53,6 +57,8 @@ class EnemyController extends Controller
             'max_attack' => 'required|integer|gte:min_attack',
             'defense' => 'required|integer|min:0',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'min_level' => 'required|integer|min:1',
+            'max_level' => 'required|integer|gte:min_level',
         ]);
         
         $data = [
@@ -61,6 +67,8 @@ class EnemyController extends Controller
             'min_attack' => $request->min_attack,
             'max_attack' => $request->max_attack,
             'defense' => $request->defense,
+            'min_level' => $request->min_level,
+            'max_level' => $request->max_level,
         ];
         
         if ($request->hasFile('image')) {

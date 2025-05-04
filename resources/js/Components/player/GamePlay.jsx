@@ -40,39 +40,33 @@ const GamePlay = () => {
             // Load player profile
             const playerResponse = await axios.get("/api/player/profile");
             setPlayer(playerResponse.data);
-            setPlayerHP(playerResponse.data.hp);
+            setPlayerHP(playerResponse.data.actual_hp);
             setPlayerLevel(playerResponse.data.level);
 
             // Load enemies with questions
             const enemiesResponse = await axios.get("/api/game/enemies");
 
-            // Filter enemies with questions
-            const enemiesWithQuestions = enemiesResponse.data.filter(
-                (enemy) => enemy.questions && enemy.questions.length > 0
-            );
-
-            if (enemiesWithQuestions.length === 0) {
+            if (enemiesResponse.data.length === 0) {
                 setMessage(
-                    "No enemies with questions available. Please try again later."
+                    "No enemies available for your level. Please try again later."
                 );
                 setGameState("game-over");
                 setLoading(false);
                 return;
             }
 
-            setEnemies(enemiesWithQuestions);
+            setEnemies(enemiesResponse.data);
 
             // Set current enemy
-            const firstEnemy = enemiesWithQuestions[0];
+            const firstEnemy = enemiesResponse.data[0];
             setCurrentEnemy(firstEnemy);
             setEnemyHP(firstEnemy.hp);
 
-            // Set current question
+            // Set current question if available
             if (firstEnemy.questions && firstEnemy.questions.length > 0) {
                 setCurrentQuestion(firstEnemy.questions[0]);
             } else {
-                setMessage("No questions available for this enemy.");
-                setGameState("game-over");
+                setGameState("player-turn");
             }
 
             setLoading(false);
@@ -209,9 +203,9 @@ const GamePlay = () => {
             return;
         }
 
-        // Next question after delay
+        // Continue battle after delay
         setTimeout(() => {
-            nextQuestion();
+            tryQuestion();
         }, 1500);
     };
 
@@ -235,10 +229,12 @@ const GamePlay = () => {
                 setCurrentEnemy(nextEnemy);
                 setEnemyHP(nextEnemy.hp);
                 setCurrentQuestionIndex(0);
-                setCurrentQuestion(nextEnemy.questions[0]);
+                setCurrentQuestion(nextEnemy.questions?.[0] || null);
                 setSelectedAnswer(null);
                 setAnswerResult(null);
-                setGameState("question");
+                setGameState(
+                    nextEnemy.questions?.length > 0 ? "question" : "player-turn"
+                );
                 setMessage(`New enemy: ${nextEnemy.name}`);
 
                 // Reset cooldowns for new enemy
@@ -260,22 +256,27 @@ const GamePlay = () => {
         }
     };
 
-    const nextQuestion = () => {
+    const tryQuestion = () => {
         // Check if there are more questions for the current enemy
-        if (currentQuestionIndex < currentEnemy.questions.length - 1) {
-            const nextQuestionIndex = currentQuestionIndex + 1;
-            setCurrentQuestionIndex(nextQuestionIndex);
-            setCurrentQuestion(currentEnemy.questions[nextQuestionIndex]);
-            setSelectedAnswer(null);
-            setAnswerResult(null);
-            setGameState("question");
+        if (currentEnemy.questions && currentEnemy.questions.length > 0) {
+            if (currentQuestionIndex < currentEnemy.questions.length - 1) {
+                const nextQuestionIndex = currentQuestionIndex + 1;
+                setCurrentQuestionIndex(nextQuestionIndex);
+                setCurrentQuestion(currentEnemy.questions[nextQuestionIndex]);
+                setSelectedAnswer(null);
+                setAnswerResult(null);
+                setGameState("question");
+            } else {
+                // No more questions, go back to player-turn (continuous battle)
+                setCurrentQuestionIndex(0);
+                setSelectedAnswer(null);
+                setAnswerResult(null);
+                setGameState("player-turn");
+                setMessage("No more questions! Continuing the battle...");
+            }
         } else {
-            // If all questions have been asked, go back to the first question
-            setCurrentQuestionIndex(0);
-            setCurrentQuestion(currentEnemy.questions[0]);
-            setSelectedAnswer(null);
-            setAnswerResult(null);
-            setGameState("question");
+            // No questions available, continue battle
+            setGameState("player-turn");
         }
     };
 

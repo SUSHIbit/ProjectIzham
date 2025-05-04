@@ -16,6 +16,8 @@ class Enemy extends Model
         'max_attack',
         'defense',
         'image_path',
+        'min_level',
+        'max_level',
     ];
 
     public function questions()

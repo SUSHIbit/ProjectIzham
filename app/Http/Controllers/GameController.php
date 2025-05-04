@@ -11,7 +11,11 @@ class GameController extends Controller
 {
     public function getAllEnemies()
     {
-        $enemies = Enemy::with('questions')->get();
+        $player = Auth::user()->player;
+        $enemies = Enemy::with('questions')
+            ->where('min_level', '<=', $player->level)
+            ->where('max_level', '>=', $player->level)
+            ->get();
         
         // Shuffle enemies
         $enemies = $enemies->shuffle();
@@ -31,6 +35,9 @@ class GameController extends Controller
         ]);
         
         $player = Auth::user()->player;
+        $player->level = $request->level;
+        $player->save();
+        
         $leaderboard = $player->leaderboard;
         
         if (!$leaderboard) {

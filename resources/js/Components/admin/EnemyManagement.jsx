@@ -18,6 +18,8 @@ const EnemyManagement = () => {
         max_attack: 20,
         defense: 5,
         image: null,
+        min_level: 1,
+        max_level: 10,
     });
 
     // File input ref
@@ -68,6 +70,8 @@ const EnemyManagement = () => {
         data.append("min_attack", formData.min_attack);
         data.append("max_attack", formData.max_attack);
         data.append("defense", formData.defense);
+        data.append("min_level", formData.min_level);
+        data.append("max_level", formData.max_level);
 
         if (formData.image) {
             data.append("image", formData.image);
@@ -109,6 +113,8 @@ const EnemyManagement = () => {
         data.append("min_attack", formData.min_attack);
         data.append("max_attack", formData.max_attack);
         data.append("defense", formData.defense);
+        data.append("min_level", formData.min_level);
+        data.append("max_level", formData.max_level);
 
         if (formData.image) {
             data.append("image", formData.image);
@@ -166,6 +172,8 @@ const EnemyManagement = () => {
             max_attack: enemy.max_attack,
             defense: enemy.defense,
             image: null,
+            min_level: enemy.min_level,
+            max_level: enemy.max_level,
         });
 
         setSelectedEnemy(enemy);
@@ -181,6 +189,8 @@ const EnemyManagement = () => {
             max_attack: 20,
             defense: 5,
             image: null,
+            min_level: 1,
+            max_level: 10,
         });
 
         if (fileInputRef.current) {
@@ -339,6 +349,44 @@ const EnemyManagement = () => {
                                     />
                                 </div>
 
+                                <div>
+                                    <label
+                                        htmlFor="min_level"
+                                        className="block text-sm font-medium text-gray-300 mb-1"
+                                    >
+                                        Min Level
+                                    </label>
+                                    <input
+                                        id="min_level"
+                                        name="min_level"
+                                        type="number"
+                                        min="1"
+                                        value={formData.min_level}
+                                        onChange={handleInputChange}
+                                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500"
+                                        required
+                                    />
+                                </div>
+
+                                <div>
+                                    <label
+                                        htmlFor="max_level"
+                                        className="block text-sm font-medium text-gray-300 mb-1"
+                                    >
+                                        Max Level
+                                    </label>
+                                    <input
+                                        id="max_level"
+                                        name="max_level"
+                                        type="number"
+                                        min={formData.min_level}
+                                        value={formData.max_level}
+                                        onChange={handleInputChange}
+                                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500"
+                                        required
+                                    />
+                                </div>
+
                                 <div className="md:col-span-2">
                                     <label
                                         htmlFor="image"
@@ -428,6 +476,12 @@ const EnemyManagement = () => {
                                 </th>
                                 <th
                                     scope="col"
+                                    className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
+                                >
+                                    Level Range
+                                </th>
+                                <th
+                                    scope="col"
                                     className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider"
                                 >
                                     Actions
@@ -438,7 +492,7 @@ const EnemyManagement = () => {
                             {enemies.length === 0 ? (
                                 <tr>
                                     <td
-                                        colSpan="6"
+                                        colSpan="7"
                                         className="px-6 py-4 text-center text-sm text-gray-400"
                                     >
                                         No enemies yet. Add your first enemy!
@@ -468,6 +522,10 @@ const EnemyManagement = () => {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                                             {enemy.defense}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                            {enemy.min_level} -{" "}
+                                            {enemy.max_level}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <div className="flex justify-end space-x-2">

@@ -10,6 +10,7 @@ const PlayerDashboard = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [isEditing, setIsEditing] = useState(false);
+    const [showStatUpgrade, setShowStatUpgrade] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -22,6 +23,11 @@ const PlayerDashboard = () => {
             setPlayer(response.data);
             setCharacterName(response.data.character_name);
             setLoading(false);
+
+            // Check if player can upgrade stats
+            if (response.data.level % 5 === 0 && response.data.level > 0) {
+                setShowStatUpgrade(true);
+            }
         } catch (error) {
             setError("Failed to load player profile");
             setLoading(false);
@@ -40,6 +46,19 @@ const PlayerDashboard = () => {
             setError("");
         } catch (error) {
             setError("Failed to update profile");
+        }
+    };
+
+    const handleStatUpgrade = async (stat) => {
+        try {
+            const response = await axios.post("/api/player/upgrade-stats", {
+                stat,
+            });
+            setPlayer(response.data);
+            setShowStatUpgrade(false);
+            setError("");
+        } catch (error) {
+            setError("Failed to upgrade stats");
         }
     };
 
@@ -72,6 +91,46 @@ const PlayerDashboard = () => {
                 {error && (
                     <div className="bg-red-500 text-white p-3 rounded-md mb-4">
                         {error}
+                    </div>
+                )}
+
+                {/* Stat Upgrade Modal */}
+                {showStatUpgrade && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-gray-800 p-6 rounded-lg max-w-md w-full m-4">
+                            <h2 className="text-xl font-bold mb-4">
+                                Level {player.level} Milestone!
+                            </h2>
+                            <p className="mb-6 text-gray-300">
+                                Choose one stat to upgrade:
+                            </p>
+                            <div className="space-y-3">
+                                <button
+                                    onClick={() => handleStatUpgrade("attack")}
+                                    className="w-full p-3 bg-red-600 hover:bg-red-700 rounded-md text-left"
+                                >
+                                    +10 Attack Range
+                                </button>
+                                <button
+                                    onClick={() => handleStatUpgrade("defense")}
+                                    className="w-full p-3 bg-blue-600 hover:bg-blue-700 rounded-md text-left"
+                                >
+                                    +10 Defense
+                                </button>
+                                <button
+                                    onClick={() => handleStatUpgrade("heal")}
+                                    className="w-full p-3 bg-green-600 hover:bg-green-700 rounded-md text-left"
+                                >
+                                    +10 Heal Value
+                                </button>
+                                <button
+                                    onClick={() => handleStatUpgrade("max_hp")}
+                                    className="w-full p-3 bg-purple-600 hover:bg-purple-700 rounded-md text-left"
+                                >
+                                    +20 Max HP
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 )}
 

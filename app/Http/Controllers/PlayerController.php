@@ -20,6 +20,7 @@ class PlayerController extends Controller
                 'character_name' => 'Adventurer',
                 'level' => 1,
                 'hp' => 100,
+                'actual_hp' => 100,
                 'defense' => 5,
                 'min_attack' => 10,
                 'max_attack' => 15,
@@ -46,6 +47,36 @@ class PlayerController extends Controller
         $player->update([
             'character_name' => $request->character_name,
         ]);
+        
+        return response()->json($player);
+    }
+    
+    public function upgradeStats(Request $request)
+    {
+        $request->validate([
+            'stat' => 'required|in:attack,defense,heal,max_hp',
+        ]);
+        
+        $player = Auth::user()->player;
+        
+        switch ($request->stat) {
+            case 'attack':
+                $player->min_attack += 10;
+                $player->max_attack += 10;
+                break;
+            case 'defense':
+                $player->defense += 10;
+                break;
+            case 'heal':
+                $player->heal_value += 10;
+                break;
+            case 'max_hp':
+                $player->hp += 20;
+                $player->actual_hp += 20;
+                break;
+        }
+        
+        $player->save();
         
         return response()->json($player);
     }
