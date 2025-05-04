@@ -18,7 +18,7 @@ const GamePlay = () => {
     const [playerHP, setPlayerHP] = useState(0);
     const [enemyHP, setEnemyHP] = useState(0);
 
-    // Battle Level State (in-game progress, always starts at 1)
+    // Battle Level State (in-game progress, persisted)
     const [battleLevel, setBattleLevel] = useState(1);
 
     // Character level (persistent level from DB)
@@ -48,11 +48,29 @@ const GamePlay = () => {
             setPlayerHP(playerResponse.data.actual_hp);
             setCharacterLevel(playerResponse.data.level);
 
-            // Always start battle at level 1
-            setBattleLevel(1);
+            // Load game state from session
+            const gameStateResponse = await axios.get("/api/game/state");
+            if (gameStateResponse.data.battle_level) {
+                // Resume existing game
+                setBattleLevel(gameStateResponse.data.battle_level);
+                setCurrentEnemyIndex(
+                    gameStateResponse.data.current_enemy_index
+                );
+                setCurrentQuestionIndex(
+                    gameStateResponse.data.current_question_index
+                );
+            } else {
+                // Start new game
+                setBattleLevel(1);
+                await axios.post("/api/game/state", {
+                    battle_level: 1,
+                    current_enemy_index: 0,
+                    current_question_index: 0,
+                });
+            }
 
             // Load all enemies
-            const enemiesResponse = await axios.get("/api/admin/enemies");
+            const enemiesResponse = await axios.get("/api/game/enemies");
 
             if (enemiesResponse.data.length === 0) {
                 setMessage("No enemies available. Please try again later.");
@@ -63,8 +81,12 @@ const GamePlay = () => {
 
             setEnemies(enemiesResponse.data);
 
-            // Set current enemy based on battle level
-            setupEnemyForLevel(1, enemiesResponse.data);
+            // Set current enemy based on saved or new battle level
+            setupEnemyForLevel(
+                gameStateResponse.data?.battle_level || 1,
+                enemiesResponse.data,
+                gameStateResponse.data?.current_enemy_index || 0
+            );
 
             setLoading(false);
         } catch (error) {
@@ -75,7 +97,7 @@ const GamePlay = () => {
         }
     };
 
-    const setupEnemyForLevel = (level, enemiesList) => {
+    const setupEnemyForLevel = (level, enemiesList, savedIndex = 0) => {
         // Filter enemies appropriate for current battle level
         const availableEnemies = enemiesList.filter(
             (enemy) => enemy.min_level <= level && enemy.max_level >= level
@@ -104,15 +126,15 @@ const GamePlay = () => {
 
         // Set current question if available
         if (selectedEnemy.questions && selectedEnemy.questions.length > 0) {
-            setCurrentQuestion(selectedEnemy.questions[0]);
-            setCurrentQuestionIndex(0);
+            setCurrentQuestion(selectedEnemy.questions[savedIndex]);
+            setCurrentQuestionIndex(savedIndex);
             setGameState("question");
         } else {
             setGameState("player-turn");
         }
     };
 
-    const handleAnswerSelection = (answer) => {
+    const handleAnswerSelection = async (answer) => {
         setSelectedAnswer(answer);
 
         const isCorrect = answer === currentQuestion.correct_answer;
@@ -120,7 +142,15 @@ const GamePlay = () => {
 
         if (isCorrect) {
             setMessage("Correct! Your turn to attack.");
-            setGameState("player-turn");
+            // Save game state
+            await saveGameState();
+
+            // Delay to show the correct answer before transitioning
+            setTimeout(() => {
+                setGameState("player-turn");
+                setSelectedAnswer(null);
+                setAnswerResult(null);
+            }, 1500);
         } else {
             setMessage("Incorrect! Enemy attacks you.");
             setTimeout(() => {
@@ -129,7 +159,7 @@ const GamePlay = () => {
         }
     };
 
-    const handleSkillUse = (skill) => {
+    const handleSkillUse = async (skill) => {
         // Check cooldowns
         if (skill !== "basicAttack" && cooldowns[skill] > 0) {
             setMessage(
@@ -201,7 +231,7 @@ const GamePlay = () => {
 
         // Check if enemy is defeated
         if (newEnemyHP <= 0) {
-            handleEnemyDefeated();
+            await handleEnemyDefeated();
         } else {
             // Enemy's turn after delay
             setTimeout(() => {
@@ -249,13 +279,13 @@ const GamePlay = () => {
         }, 1500);
     };
 
-    const handleEnemyDefeated = () => {
+    const handleEnemyDefeated = async () => {
         // Increase battle level
         const newBattleLevel = battleLevel + 1;
         setBattleLevel(newBattleLevel);
 
         // Update character level in database
-        updateCharacterLevel();
+        await updateCharacterLevel();
 
         // Show victory transition screen
         setMessage(
@@ -264,7 +294,13 @@ const GamePlay = () => {
         setGameState("victory-transition");
     };
 
-    const handleContinue = () => {
+    const handleContinue = async () => {
+        // Reset question index for new enemy
+        setCurrentQuestionIndex(0);
+
+        // Save game state before loading next enemy
+        await saveGameState();
+
         // Load enemies for next battle level
         setupEnemyForLevel(battleLevel, enemies);
 
@@ -291,6 +327,9 @@ const GamePlay = () => {
             setSelectedAnswer(null);
             setAnswerResult(null);
             setGameState("question");
+
+            // Save updated question index
+            saveGameState();
         } else {
             // No questions available, continue battle
             setGameState("player-turn");
@@ -304,6 +343,18 @@ const GamePlay = () => {
             heal: Math.max(0, prev.heal - 1),
             fireball: Math.max(0, prev.fireball - 1),
         }));
+    };
+
+    const saveGameState = async () => {
+        try {
+            await axios.post("/api/game/state", {
+                battle_level: battleLevel,
+                current_enemy_index: currentEnemyIndex,
+                current_question_index: currentQuestionIndex,
+            });
+        } catch (error) {
+            console.error("Error saving game state:", error);
+        }
     };
 
     const updateLeaderboard = async () => {
@@ -349,7 +400,9 @@ const GamePlay = () => {
         }
     };
 
-    const handleExitGame = () => {
+    const handleExitGame = async () => {
+        // Save game state before leaving
+        await saveGameState();
         navigate("/dashboard");
     };
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Enemy;
 use App\Models\Leaderboard;
+use App\Models\GameState;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -92,5 +93,37 @@ class GameController extends Controller
         $enemy->update(['question_shuffle_order' => json_encode($questionShuffleOrder)]);
         
         return response()->json(['question_ids' => $questionShuffleOrder]);
+    }
+    
+    public function getGameState()
+    {
+        $player = Auth::user()->player;
+        $gameState = GameState::where('player_id', $player->id)->first();
+        
+        if ($gameState) {
+            return response()->json([
+                'battle_level' => $gameState->battle_level,
+                'current_enemy_index' => $gameState->current_enemy_index,
+                'current_question_index' => $gameState->current_question_index,
+            ]);
+        }
+        
+        return response()->json([]);
+    }
+    
+    public function saveGameState(Request $request)
+    {
+        $player = Auth::user()->player;
+        
+        $gameState = GameState::updateOrCreate(
+            ['player_id' => $player->id],
+            [
+                'battle_level' => $request->battle_level,
+                'current_enemy_index' => $request->current_enemy_index,
+                'current_question_index' => $request->current_question_index,
+            ]
+        );
+        
+        return response()->json($gameState);
     }
 }
