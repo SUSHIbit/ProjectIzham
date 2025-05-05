@@ -97,11 +97,19 @@ class PlayerController extends Controller
         $request->validate([
             'level' => 'required|integer|min:1',
             'actual_hp' => 'required|integer|min:0',
+            'reset_to_max' => 'boolean'
         ]);
         
         $player = Auth::user()->player;
         $player->level = $request->level;
-        $player->actual_hp = $request->actual_hp;
+        
+        // If reset_to_max is true or hp is 0, set to max
+        if ($request->reset_to_max || $request->actual_hp <= 0) {
+            $player->actual_hp = $player->hp;
+        } else {
+            $player->actual_hp = $request->actual_hp;
+        }
+        
         $player->save();
         
         // Update leaderboard if this is a new highest level

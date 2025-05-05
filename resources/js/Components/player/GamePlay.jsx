@@ -269,6 +269,8 @@ const GamePlay = () => {
                 );
                 // Update leaderboard with current level
                 updateLeaderboard();
+                // Reset HP to max after game over
+                updatePlayerState(player.hp, true);
             }, 1500);
             return;
         }
@@ -368,11 +370,12 @@ const GamePlay = () => {
         }
     };
 
-    const updatePlayerState = async (hp) => {
+    const updatePlayerState = async (hp, resetToMax = false) => {
         try {
             await axios.post("/api/player/update-state", {
                 level: characterLevel,
                 actual_hp: hp,
+                reset_to_max: resetToMax,
             });
         } catch (error) {
             console.error("Error updating player state:", error);
@@ -403,6 +406,21 @@ const GamePlay = () => {
     const handleExitGame = async () => {
         // Save game state before leaving
         await saveGameState();
+
+        // Reset HP to max
+        try {
+            await axios.post("/api/player/update-state", {
+                level: characterLevel,
+                actual_hp: player.hp,
+                reset_to_max: true,
+            });
+
+            // End game session on backend
+            await axios.post("/api/game/exit");
+        } catch (error) {
+            console.error("Error exiting game:", error);
+        }
+
         navigate("/dashboard");
     };
 
@@ -450,7 +468,19 @@ const GamePlay = () => {
                     <div className="text-center">
                         <div className="text-2xl font-bold mb-6">Game Over</div>
                         <button
-                            onClick={handleExitGame}
+                            onClick={async () => {
+                                // Reset HP to max when returning to dashboard
+                                await axios.post("/api/player/update-state", {
+                                    level: characterLevel,
+                                    actual_hp: player.hp,
+                                    reset_to_max: true,
+                                });
+
+                                // End game session
+                                await axios.post("/api/game/exit");
+
+                                navigate("/dashboard");
+                            }}
                             className="px-6 py-3 bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                         >
                             Return to Dashboard
@@ -474,7 +504,22 @@ const GamePlay = () => {
                                 Continue
                             </button>
                             <button
-                                onClick={handleExitGame}
+                                onClick={async () => {
+                                    // Reset HP to max when exiting after victory
+                                    await axios.post(
+                                        "/api/player/update-state",
+                                        {
+                                            level: characterLevel,
+                                            actual_hp: player.hp,
+                                            reset_to_max: true,
+                                        }
+                                    );
+
+                                    // End game session
+                                    await axios.post("/api/game/exit");
+
+                                    navigate("/dashboard");
+                                }}
                                 className="px-6 py-3 bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                             >
                                 Exit Game

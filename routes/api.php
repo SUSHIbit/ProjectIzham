@@ -8,17 +8,6 @@ use App\Http\Controllers\QuestionController;
 use App\Http\Controllers\GameController;
 use App\Http\Controllers\LeaderboardController;
 
-/*
-|--------------------------------------------------------------------------
-| API Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "api" middleware group. Make something great!
-|
-*/
-
 // Public routes
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -39,6 +28,7 @@ Route::middleware('auth:sanctum')->group(function () {
        Route::get('/leaderboard', [LeaderboardController::class, 'index']);
        Route::post('/game/state', [GameController::class, 'saveGameState']);
        Route::get('/game/state', [GameController::class, 'getGameState']);
+       Route::post('/game/exit', [GameController::class, 'exitGame']);
    });
    
    // Admin routes

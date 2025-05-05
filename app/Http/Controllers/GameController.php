@@ -126,4 +126,22 @@ class GameController extends Controller
         
         return response()->json($gameState);
     }
+    
+    public function exitGame(Request $request)
+    {
+        try {
+            $player = Auth::user()->player;
+            
+            // Reset player's HP to max
+            $player->actual_hp = $player->hp;
+            $player->save();
+            
+            // Delete game state
+            GameState::where('player_id', $player->id)->delete();
+            
+            return response()->json(['message' => 'Game session ended']);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to exit game'], 500);
+        }
+    }
 }

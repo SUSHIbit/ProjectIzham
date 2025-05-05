@@ -23,6 +23,20 @@ const PlayerDashboard = () => {
             const response = await axios.get("/api/player/profile");
             setPlayer(response.data);
             setCharacterName(response.data.character_name);
+
+            // Ensure HP is at max when loading dashboard
+            if (response.data.actual_hp < response.data.hp) {
+                await axios.post("/api/player/update-state", {
+                    level: response.data.level,
+                    actual_hp: response.data.hp,
+                    reset_to_max: true,
+                });
+
+                // Refresh player data after reset
+                const updatedResponse = await axios.get("/api/player/profile");
+                setPlayer(updatedResponse.data);
+            }
+
             setLoading(false);
 
             // Check if player has pending stat upgrades
